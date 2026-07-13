@@ -1,0 +1,31 @@
+{
+  "name": "grappleberry-generator",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "npm run build:app && npm run build:lib",
+    "preview": "vite preview --host 0.0.0.0",
+    "render": "node scripts/render.mjs",
+    "gif": "node scripts/render-gif.mjs",
+    "contact-sheet": "node scripts/contact-sheet.mjs",
+    "test": "node scripts/test.mjs",
+    "test:unit": "vitest run",
+    "build:app": "tsc --noEmit && vite build",
+    "build:lib": "vite build --config vite.lib.config.ts",
+    "build:engine": "node scripts/build-engine.mjs",
+    "seed-sheet": "node scripts/seed-sheet.mjs"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^24.10.2",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5",
+    "vitest": "^4.1.10"
+  },
+  "description": "Seeded WebGL generative identity engine for Grappleberry.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  }
+}

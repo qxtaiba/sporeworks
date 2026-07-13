@@ -1,0 +1,19 @@
+{
+  "preset": "microbe",
+  "seed": "qxtaiba-core",
+  "phase": 0.13,
+  "animate": true,
+  "transparent": false,
+  "growth": 1,
+  "roughness": 0.085,
+  "fusion": 0.034,
+  "halftone": 1.5,
+  "contrast": 1.25,
+  "threshold": 0.485,
+  "glitch": 0,
+  "ascii": 0,
+  "rotationX": -0.06,
+  "rotationY": -0.22,
+  "rotationZ": 0.04,
+  "camera": 7.55
+}

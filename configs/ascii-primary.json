@@ -1,0 +1,19 @@
+{
+  "preset": "ascii",
+  "seed": "qxtaiba-grappleberry",
+  "phase": 0.13,
+  "animate": true,
+  "transparent": false,
+  "growth": 1,
+  "roughness": 0.145,
+  "fusion": 0.025,
+  "halftone": 1.05,
+  "contrast": 1.58,
+  "threshold": 0.5,
+  "glitch": 0.06,
+  "ascii": 1.08,
+  "rotationX": -0.02,
+  "rotationY": -0.18,
+  "rotationZ": 0.03,
+  "camera": 7.45
+}

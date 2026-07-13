@@ -1,0 +1,19 @@
+{
+  "preset": "glitch",
+  "seed": "qxtaiba-grappleberry",
+  "phase": 0.13,
+  "animate": true,
+  "transparent": false,
+  "growth": 1,
+  "roughness": 0.11,
+  "fusion": 0.026,
+  "halftone": 1.2,
+  "contrast": 1.46,
+  "threshold": 0.49,
+  "glitch": 0.62,
+  "ascii": 0,
+  "rotationX": -0.06,
+  "rotationY": 0.33,
+  "rotationZ": -0.03,
+  "camera": 7.55
+}
