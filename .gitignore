@@ -1,6 +1,11 @@
 node_modules/
+dist/
+dist-worker/
+lib/
 .frames/
 .contact-sheet/
 .test-render.png
+.test-render-terra.png
 .DS_Store
 *.log
+dist-app/

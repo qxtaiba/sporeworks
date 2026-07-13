@@ -14,7 +14,7 @@ const projectRoot = resolve(new URL("..", import.meta.url).pathname);
 const output = resolve(process.cwd(), args.out ?? `grappleberry-${args.preset ?? "haze"}.png`);
 await mkdir(dirname(output), { recursive: true });
 
-const preview = await startStaticServer(resolve(projectRoot, "dist"));
+const preview = await startStaticServer(resolve(projectRoot, "dist-app"));
 const browser = await launchBrowser();
 try {
   const page = await openCapturePage(browser, preview.origin, args);

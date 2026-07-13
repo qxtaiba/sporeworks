@@ -22,8 +22,8 @@ export interface GrappleberryOptions {
   camera: number;
   /** Terra-only: key light azimuth in degrees. Ignored by every other preset. */
   lightLon: number;
-  /** 0 = identity law's default bone monochrome. >0 blends the ink toward
-   * the grape-raspberry duotone (docs/grappleberry-identity.md §Color).
+  /** 0 = the default bone monochrome. >0 blends the ink toward the
+   * grape-raspberry duotone (the grappleberry identity's color register).
    * Applies to every preset, not just terra. */
   paletteStrength: number;
 }
@@ -48,15 +48,15 @@ export interface GrappleberryOverrides {
   paletteStrength?: number;
 }
 
-/** The one named duotone register the identity law defines today. Callers
- * pass this string via the `palette` attribute; unset/anything else stays
- * the default bone monochrome. */
+/** The one named duotone register the grappleberry identity defines today.
+ * Callers pass this string via the `palette` attribute; unset/anything else
+ * stays the default bone monochrome. */
 export type PaletteName = "grape-raspberry";
 
 const PALETTE_STRENGTH: Record<PaletteName, number> = {
-  // Tuned against docs/grappleberry-identity.md §Color's "reads monochrome
-  // at a glance" bar — 0.5 read as unambiguously pink in review; 0.18 keeps
-  // the bone base dominant with only a warm grape/raspberry cast.
+  // Tuned against the identity's "reads monochrome at a glance" bar —
+  // 0.5 read as unambiguously pink in review; 0.18 keeps the bone base
+  // dominant with only a warm grape/raspberry cast.
   "grape-raspberry": 0.18,
 };
 
@@ -66,8 +66,7 @@ export function paletteStrengthForName(name: string | null | undefined): number 
 
 /** Row-major landmask uploaded as a texture by `GrappleberryRenderer.setMaskData`.
  * `bits[row]` is a string of '0'/'1' characters, one per column; row 0 is
- * the mask's top latitude. Equirectangular, matching the site's own
- * landmask.gen.ts convention (latTop 85 → latBottom -65). */
+ * the mask's top latitude. Equirectangular (latTop 85 → latBottom -65). */
 export interface TerraMaskData {
   cols: number;
   rows: number;

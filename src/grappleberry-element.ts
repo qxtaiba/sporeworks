@@ -3,7 +3,7 @@ import { PRESETS, type PresetName } from "./presets";
 import { capabilityProbe } from "./capability";
 import { attributeToCommand, type EngineMessage } from "./engine-messages";
 
-// Injected by scripts/build-engine.mjs at build time (E6): the splice step
+// Injected by scripts/build-engine.mjs at build time: the splice step
 // replaces this with the JSON-stringified built worker source, so the
 // shipped grappleberry.js stays a single self-contained script. In raw TS
 // (dev, typecheck, vitest) it's undefined, so createEngineWorker() falls
@@ -39,7 +39,7 @@ const numericAttributeName = (key: keyof GrappleberryOptions): string =>
  * worker runs from a same-origin Blob URL and grappleberry.js stays a
  * single self-contained script (no separate worker asset to serve). In
  * dev/typecheck (no splice), it falls back to a module worker resolved
- * from this file's own source path — the generator's own vite dev server
+ * from this file's own source path — sporeworks' own vite dev server
  * handles that resolution; production never takes this branch. */
 function createEngineWorker(): Worker {
   const src = typeof __WORKER_SOURCE__ === "string" ? __WORKER_SOURCE__ : "";
@@ -100,7 +100,8 @@ export class GrappleberryElement extends HTMLElement {
 
     // Real capability probe (not API-presence-only — see capability.ts).
     // On failure the element stays inert: no getContext(), no transfer, no
-    // worker. GrappleberryMark's existing PNG still keeps showing. Critical
+    // worker. Any fallback the host page rendered (e.g. a static PNG
+    // behind the element) keeps showing. Critical
     // ordering: nothing above this line may call getContext() on
     // this.canvas — that would throw InvalidStateError on the transfer
     // below.
@@ -118,8 +119,9 @@ export class GrappleberryElement extends HTMLElement {
 
     // `maskData` may have been set as a plain instance property before this
     // element was upgraded (or before it was connected). There's no
-    // worker-side consumer for it (terra is parked, §4/§9), but keep
-    // replaying the upgrade so the property accessor itself stays correct.
+    // worker-side consumer for it (the one-way protocol has no `mask`
+    // message yet), but keep replaying the upgrade so the property
+    // accessor itself stays correct.
     this.upgradeProperty("maskData");
 
     const offscreen = this.canvas.transferControlToOffscreen();
@@ -172,11 +174,11 @@ export class GrappleberryElement extends HTMLElement {
     this.worker.postMessage({ type: "attr", command } satisfies EngineMessage);
   }
 
-  /** No worker-side renderer to reach in worker mode — terra is parked
-   * (design doc §4/§9), so this is a documented no-op rather than wiring a
-   * `phase` message for dead traffic. */
+  /** No worker-side renderer to reach in worker mode — the one-way
+   * protocol has no `phase` message, so this is a documented no-op rather
+   * than wiring a message for dead traffic. */
   setPhase(_phase: number): void {
-    // no-op: terra parked, no phase message in the one-way protocol
+    // no-op: no phase message in the one-way protocol
   }
 
   /** No main-thread renderer/canvas to read back in worker mode (the
@@ -195,15 +197,14 @@ export class GrappleberryElement extends HTMLElement {
    * equirectangular (latTop 85 → latBottom -65). Set as a property, not an
    * attribute — it's structured data, not a scalar. Safe to set before or
    * after the element upgrades/connects. Worker mode has no `mask` message
-   * (terra parked, §4/§9): the setter stores the value for the getter but
-   * otherwise no-ops. */
+   * yet: the setter stores the value for the getter but otherwise no-ops. */
   get maskData(): TerraMaskData | null {
     return this.pendingMaskData;
   }
 
   set maskData(value: TerraMaskData | null) {
     this.pendingMaskData = value;
-    // no-op beyond storage: terra parked, no worker-side renderer to reach
+    // no-op beyond storage: no worker-side renderer reachable from here
   }
 
   private postResize(): void {

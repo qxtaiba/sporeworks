@@ -1,5 +1,5 @@
-// Real feature probe for the OffscreenCanvas + Worker engine path (design
-// spec §10). API presence alone is not enough to gate the worker upgrade:
+// Real feature probe for the OffscreenCanvas + Worker engine path.
+// API presence alone is not enough to gate the worker upgrade:
 // Safari 16.4 exposes OffscreenCanvas, Worker, and transferControlToOffscreen,
 // but its in-worker OffscreenCanvas is 2D-only — WebGL-in-worker only
 // shipped in Safari 17. An API-presence-only check would transfer the

@@ -1,11 +1,11 @@
 import { defineConfig } from "vite";
 import { resolve } from "node:path";
 
-// Builds src/worker.ts (E4) into a single self-contained ES module string.
+// Builds src/worker.ts into a single self-contained ES module string.
 // Deliberately NOT `?worker&inline` — that's a documented "works in dev,
 // breaks in build" trap in library mode (vitejs/vite#13726, #14306).
 // scripts/build-engine.mjs reads dist-worker/worker.js and splices it into
-// the element bundle as a global constant. See design doc §8.
+// the element bundle as a global constant.
 export default defineConfig({
   build: {
     lib: {

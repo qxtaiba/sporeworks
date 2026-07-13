@@ -40,9 +40,9 @@ uniform float uLightLon;
 uniform sampler2D uMask;
 uniform vec2 uMaskSize;
 uniform float uHasMask;
-// 0 = current bone monochrome (identity law default); >0 blends toward the
+// 0 = current bone monochrome (the default); >0 blends toward the
 // grape-raspberry duotone register, by pre-screen luminance, inside the ink
-// itself — never the void. See docs/grappleberry-identity.md §Color.
+// itself — never the void.
 uniform float uPalette;
 uniform vec4 uBlobs[MAX_BLOBS];
 uniform vec4 uBlobScales[MAX_BLOBS];
@@ -487,11 +487,11 @@ void main() {
   value = clamp(value + paperGrain * alpha, 0.0, 1.0);
   vec3 offWhite = vec3(0.91, 0.90, 0.86);
 
-  // Grape-raspberry duotone (docs/grappleberry-identity.md §Color): #5b2a86
-  // in the shadows/body, #c43a5f in the lit flesh, picked by pre-screen
-  // luminance. Applied to the ink only (never the void) and blended in at
-  // uPalette strength (0 = identity law's default bone monochrome) so the
-  // mark still reads monochrome at a glance even when active.
+  // Grape-raspberry duotone: #5b2a86 in the shadows/body, #c43a5f in the
+  // lit flesh, picked by pre-screen luminance. Applied to the ink only
+  // (never the void) and blended in at uPalette strength (0 = the default
+  // bone monochrome) so the mark still reads monochrome at a glance even
+  // when active.
   vec3 grapeShadow = vec3(0.357, 0.165, 0.525);
   vec3 raspberryLit = vec3(0.769, 0.227, 0.373);
   vec3 duotone = mix(grapeShadow, raspberryLit, clamp(shadeLuminance, 0.0, 1.0));

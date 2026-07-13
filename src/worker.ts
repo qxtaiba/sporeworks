@@ -8,7 +8,7 @@ import { applyMessage, type EngineMessage } from "./engine-messages";
  * the lifetime of the worker. One-way message protocol (main → worker
  * only, see engine-messages.ts) — `init` constructs the renderer over the
  * transferred OffscreenCanvas, every later message is routed through the
- * pure `applyMessage`. See docs/superpowers/specs/2026-07-12-offscreen-engine-design.md §7.
+ * pure `applyMessage` (engine-messages.ts).
  */
 let renderer: GrappleberryRenderer | null = null;
 

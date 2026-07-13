@@ -25,7 +25,7 @@ await rm(frameDirectory, { recursive: true, force: true });
 await mkdir(frameDirectory, { recursive: true });
 await mkdir(dirname(output), { recursive: true });
 
-const preview = await startStaticServer(resolve(projectRoot, "dist"));
+const preview = await startStaticServer(resolve(projectRoot, "dist-app"));
 const browser = await launchBrowser();
 try {
   const page = await openCapturePage(browser, preview.origin, { ...args, phase: 0 });

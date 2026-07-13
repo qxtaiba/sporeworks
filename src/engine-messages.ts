@@ -3,9 +3,8 @@ import { paletteStrengthForName, type GrappleberryOptions, type GrappleberryRend
 
 /**
  * One-way (main → worker) message protocol for the off-thread engine.
- * See docs/superpowers/specs/2026-07-12-offscreen-engine-design.md §4.
  * No worker → main messages exist and no `phase`/`mask` messages are
- * defined (terra is dead code — see the design doc §4/§9).
+ * defined (terra's mask/phase path is not driven through the worker).
  */
 export type EngineMessage =
   | {

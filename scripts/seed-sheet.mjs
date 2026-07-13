@@ -10,7 +10,7 @@ const seeds = (args.seeds ? String(args.seeds).split(',') : [
 const preset = args.preset ?? 'haze';
 const out = resolve(args.out ?? 'examples/seeds');
 await mkdir(out, { recursive: true });
-const preview = await startStaticServer(resolve('dist'));
+const preview = await startStaticServer(resolve('dist-app'));
 const browser = await launchBrowser();
 try {
   const page = await openCapturePage(browser, preview.origin, {

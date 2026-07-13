@@ -19,7 +19,7 @@ const presets = ["haze", "microbe", "glitch", "ascii"];
 await mkdir(temp, { recursive: true });
 await mkdir(resolve(output, ".."), { recursive: true });
 
-const preview = await startStaticServer(resolve(projectRoot, "dist"));
+const preview = await startStaticServer(resolve(projectRoot, "dist-app"));
 const browser = await launchBrowser();
 try {
   for (const preset of presets) {
