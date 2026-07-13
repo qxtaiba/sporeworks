@@ -1,6 +1,12 @@
 import "./style.css";
 import { PRESETS, PRESET_ORDER, type PresetName } from "./presets";
-import { GrappleberryRenderer, optionsForPreset, type GrappleberryOptions, type TerraMaskData } from "./renderer";
+import {
+  GrappleberryRenderer,
+  optionsForPreset,
+  paletteStrengthForName,
+  type GrappleberryOptions,
+  type TerraMaskData,
+} from "./renderer";
 
 interface GrappleberryWindow extends Window {
   grappleberry?: {
@@ -9,17 +15,14 @@ interface GrappleberryWindow extends Window {
     setPreset: (preset: PresetName) => void;
     setSeed: (seed: string) => void;
     update: (options: Partial<GrappleberryOptions>) => void;
-    // string | null: renderer.captureDataUrl() returns null when the
-    // backing canvas is an OffscreenCanvas (worker mode). main.ts always
-    // constructs the renderer over a real canvas, so this is null in type
-    // only here, never in practice — see renderer.ts's captureDataUrl().
+    // Null only in type: main.ts constructs the renderer over a real
+    // canvas, so captureDataUrl() never hits its worker-mode null branch.
     captureDataUrl: () => string | null;
     getOptions: () => GrappleberryOptions;
   };
   __grappleberryReady?: boolean;
-  // The CLI capture scripts inject a landmask fixture here (before page
-  // scripts run, via Puppeteer's evaluateOnNewDocument) since structured
-  // data doesn't fit cleanly into a URL query string.
+  // CLI capture scripts inject a landmask fixture here before page scripts
+  // run — structured data doesn't fit a URL query string.
   __grappleberryMaskData?: TerraMaskData;
 }
 
@@ -81,9 +84,15 @@ app.innerHTML = `
 
       <div id="sliders"></div>
 
+      <label class="palette-control">
+        <span>PALETTE</span>
+        <button id="toggle-palette" type="button">BONE MONOCHROME</button>
+      </label>
+
       <div class="export-row">
         <button id="export-png" type="button">EXPORT PNG</button>
         <button id="copy-config" type="button">COPY CONFIG</button>
+        <button id="copy-element" type="button" class="wide">COPY ELEMENT TAG</button>
       </div>
 
       <p class="note">The source is the asset. Every specimen is reproducible from its preset, seed, and parameter values.</p>
@@ -233,14 +242,69 @@ toggleMotion?.addEventListener("click", () => {
   if (statusCopy) statusCopy.textContent = next ? "LIVE CULTURE" : "CULTURE HELD";
 });
 
-document.querySelector<HTMLButtonElement>("#export-png")?.addEventListener("click", () => renderer.capturePng());
+const togglePalette = document.querySelector<HTMLButtonElement>("#toggle-palette");
+if (togglePalette && initialOptions.paletteStrength > 0) togglePalette.textContent = "GRAPE-RASPBERRY";
+togglePalette?.addEventListener("click", () => {
+  const on = renderer.getOptions().paletteStrength > 0;
+  renderer.update({ paletteStrength: on ? 0 : paletteStrengthForName("grape-raspberry") });
+  togglePalette.textContent = on ? "BONE MONOCHROME" : "GRAPE-RASPBERRY";
+});
 
-document.querySelector<HTMLButtonElement>("#copy-config")?.addEventListener("click", async (event) => {
-  const button = event.currentTarget as HTMLButtonElement;
-  await navigator.clipboard.writeText(JSON.stringify(renderer.getOptions(), null, 2));
+const formatNumber = (value: number): string =>
+  String(Number(value.toFixed(4)));
+
+/** The current configuration as a ready-to-paste <grappleberry-organism>
+ * tag — only attributes that differ from the preset's own defaults. */
+function elementSnippet(): string {
+  const options = renderer.getOptions();
+  const defaults = optionsForPreset(options.preset, options.seed);
+  const attributes = [`preset="${options.preset}"`, `seed="${options.seed}"`];
+  const numericAttributes: Array<[string, keyof GrappleberryOptions]> = [
+    ["growth", "growth"],
+    ["roughness", "roughness"],
+    ["fusion", "fusion"],
+    ["halftone", "halftone"],
+    ["contrast", "contrast"],
+    ["threshold", "threshold"],
+    ["glitch", "glitch"],
+    ["ascii", "ascii"],
+    ["rotation-x", "rotationX"],
+    ["rotation-y", "rotationY"],
+    ["rotation-z", "rotationZ"],
+    ["camera", "camera"],
+  ];
+  for (const [attribute, key] of numericAttributes) {
+    const value = options[key] as number;
+    if (Math.abs(value - (defaults[key] as number)) > 1e-6) {
+      attributes.push(`${attribute}="${formatNumber(value)}"`);
+    }
+  }
+  if (options.paletteStrength > 0) attributes.push(`palette="grape-raspberry"`);
+  if (options.transparent) attributes.push("transparent");
+  attributes.push(options.animate ? "animate" : `animate="false"`);
+  return [
+    "<grappleberry-organism",
+    ...attributes.map((attribute) => `  ${attribute}`),
+    `  style="display:block; width:min(70vw,720px); aspect-ratio:1;"`,
+    "></grappleberry-organism>",
+  ].join("\n");
+}
+
+async function copyToClipboard(button: HTMLButtonElement, text: string): Promise<void> {
+  await navigator.clipboard.writeText(text);
   const original = button.textContent;
   button.textContent = "COPIED";
   setTimeout(() => { button.textContent = original; }, 900);
+}
+
+document.querySelector<HTMLButtonElement>("#export-png")?.addEventListener("click", () => renderer.capturePng());
+
+document.querySelector<HTMLButtonElement>("#copy-config")?.addEventListener("click", (event) => {
+  void copyToClipboard(event.currentTarget as HTMLButtonElement, JSON.stringify(renderer.getOptions(), null, 2));
+});
+
+document.querySelector<HTMLButtonElement>("#copy-element")?.addEventListener("click", (event) => {
+  void copyToClipboard(event.currentTarget as HTMLButtonElement, elementSnippet());
 });
 
 const resizeObserver = new ResizeObserver(() => renderer.resize());

@@ -101,9 +101,14 @@ h1 { margin: 0; font-size: clamp(24px, 3vw, 46px); line-height: 0.9; letter-spac
 .range-control input::-webkit-slider-runnable-track { height: 1px; background: var(--line); }
 .range-control input::-webkit-slider-thumb { appearance: none; width: 7px; height: 7px; border-radius: 0; background: var(--paper); margin-top: -3px; }
 
+.palette-control { display: block; margin-top: 4px; }
+.palette-control > span { display: block; font-size: 8px; color: var(--muted); letter-spacing: 0.06em; margin-bottom: 7px; }
+.palette-control button { appearance: none; width: 100%; text-align: left; background: transparent; border: 1px solid var(--line); color: inherit; padding: 8px 9px; cursor: pointer; font-size: 8px; letter-spacing: 0.05em; }
+
 .export-row { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 22px; }
 .export-row button { padding: 10px 7px; }
-.export-row button:hover, .control-heading button:hover, .seed-control button:hover { background: var(--paper); color: var(--ink); }
+.export-row .wide { grid-column: 1 / -1; }
+.export-row button:hover, .control-heading button:hover, .seed-control button:hover, .palette-control button:hover { background: var(--paper); color: var(--ink); }
 .note { color: var(--muted); font-size: 8px; line-height: 1.55; margin-top: 14px; }
 
 .footer { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: end; border-top: 1px solid var(--line); padding: 11px 4px 0; font-size: 8px; color: var(--muted); letter-spacing: 0.07em; }
