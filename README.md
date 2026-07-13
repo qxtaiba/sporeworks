@@ -2,6 +2,11 @@
 
 A seeded SDF raymarcher that grows halftone-screened organisms.
 
+![a grappleberry organism breathing, one seamless phase cycle](assets/demo.gif)
+
+**[Live playground →](https://qxtaiba.github.io/sporeworks/)** — grow your own
+in the browser: pick a preset, type a seed, drag the sliders, export the result.
+
 sporeworks is a WebGL engine, deliberately **raster-first, not vector**. An
 organism is raymarched from fused signed-distance geometry, cut with cavities,
 grown with tapered Bézier tendrils, lit in pseudo-3D, and then converted into
@@ -48,6 +53,34 @@ From a checkout instead of npm:
 npm install
 npm run build     # -> dist/grappleberry.js
 npm run dev       # interactive editor at the local vite URL
+```
+
+## Generate your own
+
+The fastest way is the [playground](https://qxtaiba.github.io/sporeworks/)
+(the same editor `npm run dev` serves locally): pick a preset, type a seed —
+every seed is a different organism, deterministically — tune the sliders,
+toggle the grape-raspberry palette, then take the result home:
+
+- **EXPORT PNG** downloads the current frame.
+- **COPY ELEMENT TAG** copies a ready-to-paste `<grappleberry-organism>`
+  snippet carrying exactly your preset, seed, and non-default parameters.
+- **COPY CONFIG** copies the full options JSON — reusable as a `--config`
+  file for the CLI renderers.
+
+The same organisms render headlessly from the command line (see
+[Headless capture](#headless-capture) for setup and the full flag list):
+
+```bash
+# a still of your own seed
+npm run render -- --preset haze --seed my-colony --size 640 \
+  --transparent true --out out/my-colony.png
+
+# a seamless breathing loop: frames step phase 0->1, so any frame count
+# covers exactly one cycle; frames/fps = cycleSeconds (10 for haze) plays
+# at natural speed
+npm run gif -- --preset haze --seed my-colony --size 560 \
+  --frames 80 --fps 8 --out out/my-colony.gif
 ```
 
 ## The custom element
