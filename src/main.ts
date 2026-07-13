@@ -307,7 +307,16 @@ document.querySelector<HTMLButtonElement>("#copy-element")?.addEventListener("cl
   void copyToClipboard(event.currentTarget as HTMLButtonElement, elementSnippet());
 });
 
-const resizeObserver = new ResizeObserver(() => renderer.resize());
+// Full-retina cap for the playground (the element default stays 1.5): the
+// screening is screen-space, so a full-res backing store is what makes the
+// dots crisp, and one demo canvas can afford the fill cost. Arg-less
+// resize() would fall back to the renderer's 300×300 pre-layout seed —
+// always pass the real CSS size and dpr.
+const PLAYGROUND_MAX_DPR = 2;
+const resizeToDisplay = (): void =>
+  renderer.resize(canvas.clientWidth, canvas.clientHeight, window.devicePixelRatio || 1, PLAYGROUND_MAX_DPR);
+
+const resizeObserver = new ResizeObserver(resizeToDisplay);
 resizeObserver.observe(canvas);
 
 pageWindow.grappleberry = {
@@ -328,7 +337,7 @@ pageWindow.grappleberry = {
 // Chromium capture scripts wait for this after the shader has compiled and a
 // complete frame has actually been drawn.
 requestAnimationFrame(() => {
-  renderer.resize();
+  resizeToDisplay();
   renderer.render();
   pageWindow.__grappleberryReady = true;
 });
