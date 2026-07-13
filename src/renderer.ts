@@ -189,11 +189,12 @@ export class GrappleberryRenderer {
   private targetFps = 60;
   private lastRenderTime = 0;
   private resolutionScale = 1;
-  // Last-known CSS size + dpr, seeded to a canvas element's default backing
-  // size at 1x; reused by arg-less resize() calls (see resize()).
+  // Last-known CSS size + dpr + cap, seeded to a canvas element's default
+  // backing size at 1x; reused by arg-less resize() calls (see resize()).
   private lastCssW = 300;
   private lastCssH = 300;
   private lastDpr = 1;
+  private lastDprCap = 1.5;
 
   constructor(canvas: HTMLCanvasElement | OffscreenCanvas, options: GrappleberryOptions) {
     this.canvas = canvas;
@@ -311,19 +312,21 @@ export class GrappleberryRenderer {
     this.dirty = true;
   }
 
-  /** Resizes the backing store (dpr-capped via backingSize, scaled by
-   * resolutionScale). Args are optional only so the constructor and
-   * setResolutionScale can reuse the last externally-supplied dims — this
-   * never reads window.devicePixelRatio or canvas.clientWidth, so it works
-   * on an OffscreenCanvas in a worker, where neither exists. */
-  resize(width?: number, height?: number, dpr?: number): void {
+  /** Resizes the backing store (dpr capped at `dprCap`, default 1.5, then
+   * scaled by resolutionScale). Args are optional only so the constructor
+   * and setResolutionScale can reuse the last externally-supplied values —
+   * this never reads window.devicePixelRatio or canvas.clientWidth, so it
+   * works on an OffscreenCanvas in a worker, where neither exists. */
+  resize(width?: number, height?: number, dpr?: number, dprCap?: number): void {
     const cssWidth = width ?? this.lastCssW;
     const cssHeight = height ?? this.lastCssH;
     const pixelRatio = dpr ?? this.lastDpr;
+    const cap = dprCap ?? this.lastDprCap;
     this.lastCssW = cssWidth;
     this.lastCssH = cssHeight;
     this.lastDpr = pixelRatio;
-    const capped = backingSize(cssWidth, cssHeight, pixelRatio);
+    this.lastDprCap = cap;
+    const capped = backingSize(cssWidth, cssHeight, pixelRatio, cap);
     const nextWidth = Math.max(1, Math.floor(capped.w * this.resolutionScale));
     const nextHeight = Math.max(1, Math.floor(capped.h * this.resolutionScale));
     if (this.canvas.width !== nextWidth || this.canvas.height !== nextHeight) {

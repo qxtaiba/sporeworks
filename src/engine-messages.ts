@@ -14,12 +14,13 @@ export type EngineMessage =
       fps: number | null;
       resolution: number | null;
       dpr: number;
+      maxDpr: number;
       cssW: number;
       cssH: number;
     }
   | { type: "attr"; command: EngineCommand }
   | { type: "animate"; on: boolean }
-  | { type: "resize"; cssW: number; cssH: number; dpr: number }
+  | { type: "resize"; cssW: number; cssH: number; dpr: number; maxDpr: number }
   | { type: "destroy" };
 
 /** The renderer method an `attr` message resolves to. */
@@ -130,7 +131,7 @@ export function applyMessage(renderer: GrappleberryRenderer, msg: Exclude<Engine
       renderer.setAnimating(msg.on);
       return;
     case "resize":
-      renderer.resize(msg.cssW, msg.cssH, msg.dpr);
+      renderer.resize(msg.cssW, msg.cssH, msg.dpr, msg.maxDpr);
       return;
     case "destroy":
       renderer.destroy();

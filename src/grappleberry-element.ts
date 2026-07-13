@@ -67,6 +67,7 @@ export class GrappleberryElement extends HTMLElement {
       "light-lon",
       "fps",
       "resolution",
+      "max-dpr",
       "palette",
     ];
   }
@@ -78,6 +79,7 @@ export class GrappleberryElement extends HTMLElement {
   private visibilityHandler: (() => void) | null = null;
   private attributeAnimate = true;
   private isIntersecting = true;
+  private maxDpr = 1.5;
   private pendingMaskData: TerraMaskData | null = null;
 
   connectedCallback(): void {
@@ -113,6 +115,11 @@ export class GrappleberryElement extends HTMLElement {
     // Replay a pre-upgrade `maskData` assignment through the accessor.
     this.upgradeProperty("maskData");
 
+    // Backing-store dpr ceiling (default 1.5 — the screening hides the
+    // upscale, so consumers shouldn't pay full-retina fill cost unasked).
+    // Raise via max-dpr="2" where crispness matters more than perf.
+    this.maxDpr = this.readNumber("max-dpr") ?? 1.5;
+
     const offscreen = this.canvas.transferControlToOffscreen();
     this.worker = createEngineWorker();
     const r = this.getBoundingClientRect();
@@ -122,7 +129,8 @@ export class GrappleberryElement extends HTMLElement {
       options,
       fps: this.readNumber("fps"),
       resolution: this.readNumber("resolution"),
-      dpr: Math.min(devicePixelRatio || 1, 1.5),
+      dpr: devicePixelRatio || 1,
+      maxDpr: this.maxDpr,
       cssW: r.width || 300,
       cssH: r.height || 300,
     };
@@ -156,6 +164,11 @@ export class GrappleberryElement extends HTMLElement {
     if (name === "animate") {
       this.attributeAnimate = this.readBoolean("animate", true);
       this.syncAnimationGate();
+      return;
+    }
+    if (name === "max-dpr") {
+      this.maxDpr = this.readNumber("max-dpr") ?? 1.5;
+      this.postResize();
       return;
     }
     const command = attributeToCommand(name, this.getAttribute(name), (raw) => this.readNumberFrom(raw));
@@ -196,7 +209,8 @@ export class GrappleberryElement extends HTMLElement {
       type: "resize",
       cssW: r.width || 1,
       cssH: r.height || 1,
-      dpr: Math.min(devicePixelRatio || 1, 1.5),
+      dpr: devicePixelRatio || 1,
+      maxDpr: this.maxDpr,
     };
     this.worker.postMessage(message);
   }

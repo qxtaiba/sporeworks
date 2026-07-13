@@ -164,6 +164,10 @@ describe("attributeToCommand", () => {
     expect(attributeToCommand("animate", "false", readNumber)).toBeNull();
   });
 
+  it("returns null for the max-dpr attribute (element-level, carried on resize messages)", () => {
+    expect(attributeToCommand("max-dpr", "2", readNumber)).toBeNull();
+  });
+
   it("returns null for an unknown attribute", () => {
     expect(attributeToCommand("unknown", "x", readNumber)).toBeNull();
   });
@@ -187,10 +191,10 @@ describe("applyMessage", () => {
     expect(fake.setAnimating).toHaveBeenCalledWith(false);
   });
 
-  it("routes resize messages to resize(cssW, cssH, dpr)", () => {
+  it("routes resize messages to resize(cssW, cssH, dpr, maxDpr)", () => {
     const fake = makeFakeRenderer();
-    applyMessage(fake as unknown as GrappleberryRenderer, { type: "resize", cssW: 1, cssH: 2, dpr: 3 });
-    expect(fake.resize).toHaveBeenCalledWith(1, 2, 3);
+    applyMessage(fake as unknown as GrappleberryRenderer, { type: "resize", cssW: 1, cssH: 2, dpr: 3, maxDpr: 2 });
+    expect(fake.resize).toHaveBeenCalledWith(1, 2, 3, 2);
   });
 
   it("routes attr/setPreset messages to setPreset", () => {

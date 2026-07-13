@@ -14,7 +14,7 @@ self.onmessage = (e: MessageEvent<EngineMessage>) => {
     renderer = new GrappleberryRenderer(msg.canvas, msg.options);
     if (msg.fps !== null) renderer.setTargetFps(msg.fps);
     if (msg.resolution !== null) renderer.setResolutionScale(msg.resolution);
-    renderer.resize(msg.cssW, msg.cssH, msg.dpr);
+    renderer.resize(msg.cssW, msg.cssH, msg.dpr, msg.maxDpr);
     return;
   }
   if (renderer) applyMessage(renderer, msg);
