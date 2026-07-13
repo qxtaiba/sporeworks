@@ -2,7 +2,8 @@
 
 A seeded SDF raymarcher that grows halftone-screened organisms.
 
-![a grappleberry organism breathing, one seamless phase cycle](assets/demo.gif)
+<img src="assets/demo.gif" width="480" alt="a grappleberry organism breathing, one seamless phase cycle">
+
 
 **[Live playground →](https://qxtaiba.github.io/sporeworks/)** — grow your own
 in the browser: pick a preset, type a seed, drag the sliders, export the result.
@@ -78,9 +79,10 @@ npm run render -- --preset haze --seed my-colony --size 640 \
 
 # a seamless breathing loop: frames step phase 0->1, so any frame count
 # covers exactly one cycle; frames/fps = cycleSeconds (10 for haze) plays
-# at natural speed
-npm run gif -- --preset haze --seed my-colony --size 560 \
-  --frames 80 --fps 8 --out out/my-colony.gif
+# at natural speed. Capture at 2x and --scale down: the supersample keeps
+# the halftone dots crisp through gif quantization
+npm run gif -- --preset haze --seed my-colony --size 1120 --scale 560 \
+  --frames 160 --fps 16 --out out/my-colony.gif
 ```
 
 ## The custom element
@@ -108,6 +110,7 @@ control is an attribute, live-updatable after connect:
 | `light-lon` | terra only: key-light azimuth in degrees |
 | `fps` | Draw-call cadence cap (default 60); phase is wall-clock-driven so playback speed is unaffected |
 | `resolution` | 0–1 backing-store scale (CSS-upscaled; the screening hides the softness well below 1) |
+| `max-dpr` | Backing-store device-pixel-ratio ceiling (default 1.5). The screening is screen-space, so `max-dpr="2"` reads fully crisp on retina — at higher fill cost |
 | `palette` | `grape-raspberry` blends the ink toward a grape/raspberry duotone; omit for bone monochrome |
 
 Plus one JS **property** (structured data, not a scalar):
