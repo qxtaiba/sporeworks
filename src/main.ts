@@ -1,11 +1,15 @@
 import "./style.css";
 import { PRESETS, PRESET_ORDER, type PresetName } from "./presets";
 import {
+  clampDialValue,
   isQualityName,
+  QUALITY_DIALS,
   QUALITY_ORDER,
   QUALITY_SETTINGS,
   qualityAttributes,
+  qualityNameForSettings,
   type QualityName,
+  type QualitySettings,
 } from "./quality";
 import {
   GrappleberryRenderer,
@@ -42,8 +46,19 @@ const captureMode = params.get("capture") === "1";
 const transparent = params.get("transparent") === "1";
 const phase = Number(params.get("phase") ?? "0.13");
 const animate = !captureMode && params.get("animate") !== "0";
+// The dials are the quality truth; ?quality=<name> seeds them from a preset,
+// then raw ?resolution= / ?max-dpr= / ?fps= override individual axes so a
+// custom state survives in the URL.
 const requestedQuality = params.get("quality");
-let quality: QualityName = isQualityName(requestedQuality) ? requestedQuality : "full";
+const qualitySettings: QualitySettings = {
+  ...QUALITY_SETTINGS[isQualityName(requestedQuality) ? requestedQuality : "full"],
+};
+for (const dial of QUALITY_DIALS) {
+  const raw = params.get(dial.attr);
+  if (raw !== null && raw.trim() !== "") {
+    qualitySettings[dial.key] = clampDialValue(dial, Number(raw), qualitySettings[dial.key]);
+  }
+}
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("Missing #app element.");
@@ -101,9 +116,26 @@ app.innerHTML = `
       <div class="quality-control">
         <span>QUALITY</span>
         <div class="quality-steps">
-          ${QUALITY_ORDER.map((name) => `<button data-quality="${name}" type="button" class="${name === quality ? "active" : ""}">${name.toUpperCase()}</button>`).join("")}
+          ${QUALITY_ORDER.map((name) => `<button data-quality="${name}" type="button" class="${name === qualityNameForSettings(qualitySettings) ? "active" : ""}">${name.toUpperCase()}</button>`).join("")}
+          <span class="quality-custom ${qualityNameForSettings(qualitySettings) === null ? "active" : ""}">CUSTOM</span>
         </div>
-        <small>COARSER STEPS CUT GPU + BATTERY COST. EXPORTS CAPTURE AT THE SELECTED STEP.</small>
+        <div class="quality-dials">
+          ${QUALITY_DIALS.map((dial) => `
+            <label class="range-control">
+              <span>${dial.label}</span>
+              <output data-quality-output="${dial.key}">${qualitySettings[dial.key].toFixed(dial.decimals)}</output>
+              <input
+                data-quality-dial="${dial.key}"
+                type="range"
+                min="${dial.min}"
+                max="${dial.max}"
+                step="${dial.step}"
+                value="${qualitySettings[dial.key]}"
+              />
+            </label>
+          `).join("")}
+        </div>
+        <small>PRESETS SET ALL THREE DIALS. COARSER SETTINGS CUT GPU + BATTERY COST.</small>
       </div>
 
       <div class="export-row">
@@ -298,7 +330,7 @@ function elementSnippet(): string {
   }
   if (options.paletteStrength > 0) attributes.push(`palette="grape-raspberry"`);
   if (options.transparent) attributes.push("transparent");
-  attributes.push(...qualityAttributes(quality));
+  attributes.push(...qualityAttributes(qualitySettings));
   attributes.push(options.animate ? "animate" : `animate="false"`);
   return [
     "<grappleberry-organism",
@@ -320,7 +352,11 @@ document.querySelector<HTMLButtonElement>("#export-png")?.addEventListener("clic
 document.querySelector<HTMLButtonElement>("#copy-config")?.addEventListener("click", (event) => {
   void copyToClipboard(
     event.currentTarget as HTMLButtonElement,
-    JSON.stringify({ ...renderer.getOptions(), quality, ...QUALITY_SETTINGS[quality] }, null, 2),
+    JSON.stringify(
+      { ...renderer.getOptions(), quality: qualityNameForSettings(qualitySettings) ?? "custom", ...qualitySettings },
+      null,
+      2,
+    ),
   );
 });
 
@@ -328,48 +364,98 @@ document.querySelector<HTMLButtonElement>("#copy-element")?.addEventListener("cl
   void copyToClipboard(event.currentTarget as HTMLButtonElement, elementSnippet());
 });
 
-// The quality step drives the three renderer cost inputs (backing scale,
-// dpr ceiling, fps cap). FULL's dpr cap of 2 is the playground's historical
-// full-retina ceiling (the element default stays 1.5): the screening is
-// screen-space, so a full-res backing store is what makes the dots crisp,
-// and one demo canvas can afford the fill cost. Arg-less resize() would
-// fall back to the renderer's 300×300 pre-layout seed — always pass the
-// real CSS size and dpr.
+// The quality dials drive the three renderer cost inputs (backing scale,
+// dpr ceiling, fps cap); presets just set all three dials at once. FULL's
+// dpr cap of 2 is the playground's historical full-retina ceiling (the
+// element default stays 1.5): the screening is screen-space, so a full-res
+// backing store is what makes the dots crisp, and one demo canvas can
+// afford the fill cost. Arg-less resize() would fall back to the renderer's
+// 300×300 pre-layout seed — always pass the real CSS size and dpr.
 const resizeToDisplay = (): void =>
   renderer.resize(
     canvas.clientWidth,
     canvas.clientHeight,
     window.devicePixelRatio || 1,
-    QUALITY_SETTINGS[quality].maxDpr,
+    qualitySettings.maxDpr,
   );
 
 const resizeObserver = new ResizeObserver(resizeToDisplay);
 resizeObserver.observe(canvas);
 
-function applyQuality(name: QualityName): void {
-  quality = name;
-  const settings = QUALITY_SETTINGS[name];
-  renderer.setTargetFps(settings.fps);
+/** Reflect qualitySettings into the dial inputs + readouts (after a preset
+ * click or any other programmatic change). */
+function syncQualityDials(): void {
+  for (const dial of QUALITY_DIALS) {
+    const input = document.querySelector<HTMLInputElement>(`input[data-quality-dial='${dial.key}']`);
+    if (input) input.value = String(qualitySettings[dial.key]);
+    const output = document.querySelector<HTMLOutputElement>(`[data-quality-output='${dial.key}']`);
+    if (output) output.value = qualitySettings[dial.key].toFixed(dial.decimals);
+  }
+}
+
+/** A preset button reads active only while the dials sit exactly on it;
+ * otherwise the dim CUSTOM marker takes over. */
+function syncQualityRow(): void {
+  const name = qualityNameForSettings(qualitySettings);
+  document.querySelectorAll<HTMLButtonElement>(".quality-steps button").forEach((button) => {
+    button.classList.toggle("active", button.dataset.quality === name);
+  });
+  document.querySelector(".quality-custom")?.classList.toggle("active", name === null);
+}
+
+/** Keep the URL reloadable: a preset persists as ?quality=<name> (full is
+ * the default, so it clears the params), a custom state persists as the
+ * three raw values. */
+function syncQualityUrl(): void {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("quality");
+  for (const dial of QUALITY_DIALS) url.searchParams.delete(dial.attr);
+  const name = qualityNameForSettings(qualitySettings);
+  if (name === null) {
+    for (const dial of QUALITY_DIALS) url.searchParams.set(dial.attr, String(qualitySettings[dial.key]));
+  } else if (name !== "full") {
+    url.searchParams.set("quality", name);
+  }
+  window.history.replaceState(null, "", url);
+}
+
+function applyQualitySettings(): void {
+  renderer.setTargetFps(qualitySettings.fps);
   // setResolutionScale re-resizes with the previous dpr cap; resizeToDisplay
   // then applies the new cap synchronously in the same task, so the browser
   // paints at most one frame — the one at the final size. No mid-switch
   // flash, and the running loop just picks up the new backing store.
-  renderer.setResolutionScale(settings.resolution);
+  renderer.setResolutionScale(qualitySettings.resolution);
   resizeToDisplay();
-  document.querySelectorAll<HTMLButtonElement>(".quality-steps button").forEach((button) => {
-    button.classList.toggle("active", button.dataset.quality === name);
-  });
+  syncQualityRow();
+  syncQualityUrl();
 }
 
 document.querySelectorAll<HTMLButtonElement>(".quality-steps button").forEach((button) => {
-  button.addEventListener("click", () => applyQuality(button.dataset.quality as QualityName));
+  button.addEventListener("click", () => {
+    Object.assign(qualitySettings, QUALITY_SETTINGS[button.dataset.quality as QualityName]);
+    syncQualityDials();
+    applyQualitySettings();
+  });
 });
 
-// Seed the cadence + backing scale for a non-default ?quality= before the
-// first real resize; the dpr cap lands with the rAF resizeToDisplay below
-// (calling it here would size against a pre-layout zero clientWidth).
-renderer.setTargetFps(QUALITY_SETTINGS[quality].fps);
-renderer.setResolutionScale(QUALITY_SETTINGS[quality].resolution);
+document.querySelectorAll<HTMLInputElement>("input[data-quality-dial]").forEach((input) => {
+  const key = input.dataset.qualityDial as keyof QualitySettings;
+  const dial = QUALITY_DIALS.find((definition) => definition.key === key);
+  if (!dial) return;
+  input.addEventListener("input", () => {
+    qualitySettings[key] = Number(input.value);
+    const output = document.querySelector<HTMLOutputElement>(`[data-quality-output='${key}']`);
+    if (output) output.value = qualitySettings[key].toFixed(dial.decimals);
+    applyQualitySettings();
+  });
+});
+
+// Seed the cadence + backing scale for a non-default initial quality before
+// the first real resize; the dpr cap lands with the rAF resizeToDisplay
+// below (calling it here would size against a pre-layout zero clientWidth).
+renderer.setTargetFps(qualitySettings.fps);
+renderer.setResolutionScale(qualitySettings.resolution);
 
 pageWindow.grappleberry = {
   renderer,

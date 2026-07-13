@@ -63,11 +63,15 @@ The fastest way is the [playground](https://qxtaiba.github.io/sporeworks/)
 every seed is a different organism, deterministically — tune the sliders,
 toggle the grape-raspberry palette, then take the result home:
 
-- **QUALITY** steps the render cost in one click — DRAFT (0.5× backing /
-  dpr 1 / 24fps) · BALANCED (0.75× / 1.5 / 30fps) · FULL (native / retina /
-  60fps, the default); it live-updates the running organism, preloads from
-  `?quality=`, and flows into the copied tag as `resolution` / `max-dpr` /
-  `fps` attributes.
+- **QUALITY** is three raw dials over the render cost — `resolution`
+  (0.25–1 backing scale), `max-dpr` (1–3 retina ceiling), `fps` (12–60
+  cadence) — with one-click presets that set all three: DRAFT (0.5× / 1 /
+  24fps) · BALANCED (0.75× / 1.5 / 30fps) · FULL (native / retina / 60fps,
+  the default). A preset reads active only while the dials sit exactly on
+  it; anywhere else the row marks CUSTOM. Everything live-updates the
+  running organism, persists in the URL (`?quality=<name>` for presets,
+  raw `?resolution=` / `?max-dpr=` / `?fps=` when custom), and flows into
+  the copied tag as `resolution` / `max-dpr` / `fps` attributes.
 - **EXPORT PNG** downloads the current frame.
 - **COPY ELEMENT TAG** copies a ready-to-paste `<grappleberry-organism>`
   snippet carrying exactly your preset, seed, and non-default parameters.
