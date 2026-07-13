@@ -1,6 +1,13 @@
 import "./style.css";
 import { PRESETS, PRESET_ORDER, type PresetName } from "./presets";
 import {
+  isQualityName,
+  QUALITY_ORDER,
+  QUALITY_SETTINGS,
+  qualityAttributes,
+  type QualityName,
+} from "./quality";
+import {
   GrappleberryRenderer,
   optionsForPreset,
   paletteStrengthForName,
@@ -35,6 +42,8 @@ const captureMode = params.get("capture") === "1";
 const transparent = params.get("transparent") === "1";
 const phase = Number(params.get("phase") ?? "0.13");
 const animate = !captureMode && params.get("animate") !== "0";
+const requestedQuality = params.get("quality");
+let quality: QualityName = isQualityName(requestedQuality) ? requestedQuality : "full";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("Missing #app element.");
@@ -88,6 +97,14 @@ app.innerHTML = `
         <span>PALETTE</span>
         <button id="toggle-palette" type="button">BONE MONOCHROME</button>
       </label>
+
+      <div class="quality-control">
+        <span>QUALITY</span>
+        <div class="quality-steps">
+          ${QUALITY_ORDER.map((name) => `<button data-quality="${name}" type="button" class="${name === quality ? "active" : ""}">${name.toUpperCase()}</button>`).join("")}
+        </div>
+        <small>COARSER STEPS CUT GPU + BATTERY COST. EXPORTS CAPTURE AT THE SELECTED STEP.</small>
+      </div>
 
       <div class="export-row">
         <button id="export-png" type="button">EXPORT PNG</button>
@@ -281,6 +298,7 @@ function elementSnippet(): string {
   }
   if (options.paletteStrength > 0) attributes.push(`palette="grape-raspberry"`);
   if (options.transparent) attributes.push("transparent");
+  attributes.push(...qualityAttributes(quality));
   attributes.push(options.animate ? "animate" : `animate="false"`);
   return [
     "<grappleberry-organism",
@@ -300,24 +318,58 @@ async function copyToClipboard(button: HTMLButtonElement, text: string): Promise
 document.querySelector<HTMLButtonElement>("#export-png")?.addEventListener("click", () => renderer.capturePng());
 
 document.querySelector<HTMLButtonElement>("#copy-config")?.addEventListener("click", (event) => {
-  void copyToClipboard(event.currentTarget as HTMLButtonElement, JSON.stringify(renderer.getOptions(), null, 2));
+  void copyToClipboard(
+    event.currentTarget as HTMLButtonElement,
+    JSON.stringify({ ...renderer.getOptions(), quality, ...QUALITY_SETTINGS[quality] }, null, 2),
+  );
 });
 
 document.querySelector<HTMLButtonElement>("#copy-element")?.addEventListener("click", (event) => {
   void copyToClipboard(event.currentTarget as HTMLButtonElement, elementSnippet());
 });
 
-// Full-retina cap for the playground (the element default stays 1.5): the
-// screening is screen-space, so a full-res backing store is what makes the
-// dots crisp, and one demo canvas can afford the fill cost. Arg-less
-// resize() would fall back to the renderer's 300×300 pre-layout seed —
-// always pass the real CSS size and dpr.
-const PLAYGROUND_MAX_DPR = 2;
+// The quality step drives the three renderer cost inputs (backing scale,
+// dpr ceiling, fps cap). FULL's dpr cap of 2 is the playground's historical
+// full-retina ceiling (the element default stays 1.5): the screening is
+// screen-space, so a full-res backing store is what makes the dots crisp,
+// and one demo canvas can afford the fill cost. Arg-less resize() would
+// fall back to the renderer's 300×300 pre-layout seed — always pass the
+// real CSS size and dpr.
 const resizeToDisplay = (): void =>
-  renderer.resize(canvas.clientWidth, canvas.clientHeight, window.devicePixelRatio || 1, PLAYGROUND_MAX_DPR);
+  renderer.resize(
+    canvas.clientWidth,
+    canvas.clientHeight,
+    window.devicePixelRatio || 1,
+    QUALITY_SETTINGS[quality].maxDpr,
+  );
 
 const resizeObserver = new ResizeObserver(resizeToDisplay);
 resizeObserver.observe(canvas);
+
+function applyQuality(name: QualityName): void {
+  quality = name;
+  const settings = QUALITY_SETTINGS[name];
+  renderer.setTargetFps(settings.fps);
+  // setResolutionScale re-resizes with the previous dpr cap; resizeToDisplay
+  // then applies the new cap synchronously in the same task, so the browser
+  // paints at most one frame — the one at the final size. No mid-switch
+  // flash, and the running loop just picks up the new backing store.
+  renderer.setResolutionScale(settings.resolution);
+  resizeToDisplay();
+  document.querySelectorAll<HTMLButtonElement>(".quality-steps button").forEach((button) => {
+    button.classList.toggle("active", button.dataset.quality === name);
+  });
+}
+
+document.querySelectorAll<HTMLButtonElement>(".quality-steps button").forEach((button) => {
+  button.addEventListener("click", () => applyQuality(button.dataset.quality as QualityName));
+});
+
+// Seed the cadence + backing scale for a non-default ?quality= before the
+// first real resize; the dpr cap lands with the rAF resizeToDisplay below
+// (calling it here would size against a pre-layout zero clientWidth).
+renderer.setTargetFps(QUALITY_SETTINGS[quality].fps);
+renderer.setResolutionScale(QUALITY_SETTINGS[quality].resolution);
 
 pageWindow.grappleberry = {
   renderer,

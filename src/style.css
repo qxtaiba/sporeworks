@@ -105,6 +105,15 @@ h1 { margin: 0; font-size: clamp(24px, 3vw, 46px); line-height: 0.9; letter-spac
 .palette-control > span { display: block; font-size: 8px; color: var(--muted); letter-spacing: 0.06em; margin-bottom: 7px; }
 .palette-control button { appearance: none; width: 100%; text-align: left; background: transparent; border: 1px solid var(--line); color: inherit; padding: 8px 9px; cursor: pointer; font-size: 8px; letter-spacing: 0.05em; }
 
+.quality-control { display: block; margin-top: 14px; }
+.quality-control > span { display: block; font-size: 8px; color: var(--muted); letter-spacing: 0.06em; margin-bottom: 7px; }
+.quality-steps { display: flex; }
+.quality-steps button { appearance: none; flex: 1; background: transparent; border: 1px solid var(--line); color: inherit; padding: 8px 4px; cursor: pointer; font-size: 8px; letter-spacing: 0.05em; opacity: 0.47; transition: opacity 150ms ease, background 150ms ease; }
+.quality-steps button:not(:first-child) { border-left: 0; }
+.quality-steps button:hover { opacity: 0.8; background: rgba(255,255,255,0.025); }
+.quality-steps button.active { opacity: 1; background: rgba(255,255,255,0.06); border-bottom-color: var(--paper); }
+.quality-control > small { display: block; margin-top: 7px; font-size: 8px; color: var(--muted); letter-spacing: 0.04em; line-height: 1.55; }
+
 .export-row { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 22px; }
 .export-row button { padding: 10px 7px; }
 .export-row .wide { grid-column: 1 / -1; }
