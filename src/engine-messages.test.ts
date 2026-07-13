@@ -2,8 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { paletteStrengthForName, type GrappleberryRenderer } from "./renderer";
 import { applyMessage, attributeToCommand, type EngineMessage } from "./engine-messages";
 
-// Mirrors grappleberry-element.ts's own `readNumber`: parse-or-null, no
-// attribute-name lookup (the pure function takes the raw string directly).
+// Same parse-or-null contract as grappleberry-element.ts's readNumber.
 const readNumber = (raw: string | null): number | null => {
   if (raw === null || raw.trim() === "") return null;
   const value = Number(raw);
@@ -246,8 +245,6 @@ describe("applyMessage", () => {
   });
 
   it("type-narrows EngineMessage to exclude init at the call site (compile-time check)", () => {
-    // This test exists to exercise the Exclude<EngineMessage, {type:'init'}>
-    // parameter type — applyMessage must not accept an `init` message.
     const nonInit: Exclude<EngineMessage, { type: "init" }> = { type: "destroy" };
     const fake = makeFakeRenderer();
     applyMessage(fake as unknown as GrappleberryRenderer, nonInit);

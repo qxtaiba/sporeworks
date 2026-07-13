@@ -1,12 +1,5 @@
 import { PRESETS, type Preset, type PresetName } from "./presets";
-import {
-  RNG,
-  add3,
-  normalize3,
-  randomDirection,
-  scale3,
-  type Vec3,
-} from "./random";
+import { RNG, add3, normalize3, scale3, type Vec3 } from "./random";
 
 export const MAX_BLOBS = 32;
 export const MAX_CAVITIES = 16;

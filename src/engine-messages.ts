@@ -22,20 +22,14 @@ export type EngineMessage =
   | { type: "resize"; cssW: number; cssH: number; dpr: number }
   | { type: "destroy" };
 
-/** The renderer method an `attr` message resolves to, mirroring today's
- * `attributeChangedCallback` fan-out (grappleberry-element.ts). */
+/** The renderer method an `attr` message resolves to. */
 export type EngineCommand =
   | { method: "setPreset" | "setSeed" | "setTargetFps" | "setResolutionScale"; arg: string | number }
   | { method: "update"; patch: Partial<GrappleberryOptions> };
 
-// The subset of GrappleberryOptions keys carried by attributeToCommand's
-// numeric branch — everything except the string/boolean options, which have
-// their own named branches (preset/seed/transparent) below.
 type NumericOptionKey = Exclude<keyof GrappleberryOptions, "preset" | "seed" | "animate" | "transparent">;
 
-// Mirrors grappleberry-element.ts's `observedNumericAttributes` exactly —
-// the 14 numeric option keys reachable via a plain (non-renamed) attribute
-// name (i.e. attribute name === option key).
+// Must mirror grappleberry-element.ts's `observedNumericAttributes`.
 const NUMERIC_OPTION_KEYS: NumericOptionKey[] = [
   "phase",
   "growth",
@@ -53,8 +47,6 @@ const NUMERIC_OPTION_KEYS: NumericOptionKey[] = [
   "lightLon",
 ];
 
-// Mirrors grappleberry-element.ts's `attributeNameToOptionKey`: the four
-// kebab-case renames, then a straight pass-through lookup for the rest.
 function numericAttributeToOptionKey(name: string): NumericOptionKey | null {
   if (name === "rotation-x") return "rotationX";
   if (name === "rotation-y") return "rotationY";
@@ -63,22 +55,17 @@ function numericAttributeToOptionKey(name: string): NumericOptionKey | null {
   return (NUMERIC_OPTION_KEYS as string[]).includes(name) ? (name as NumericOptionKey) : null;
 }
 
-// Mirrors grappleberry-element.ts's `readBoolean`: absent attribute (value
-// === null, i.e. what getAttribute returns when hasAttribute is false)
-// falls back; present attribute is boolean-true unless "false" or "0".
+// Absent attribute (null) falls back; present is true unless "false"/"0".
 function readBooleanValue(value: string | null, fallback: boolean): boolean {
   if (value === null) return fallback;
   return value !== "false" && value !== "0";
 }
 
 /**
- * Mirrors grappleberry-element.ts's current `attributeChangedCallback`
- * fan-out (the 7 named branches + the numeric-option pass-through) as a
- * pure function: given an observed attribute's name and current value, what
- * renderer command should it produce? Returns null for attributes that
- * don't map to a renderer command — including `animate`, which is folded
- * into visibility state and posted as its own `animate` message, not an
- * `attr` command (see the design doc §4).
+ * Maps an observed attribute's name and current value to the renderer
+ * command it should produce. Returns null for attributes that don't map to
+ * one — including `animate`, which is folded into visibility state and
+ * posted as its own `animate` message, not an `attr` command.
  */
 export function attributeToCommand(
   name: string,
@@ -112,9 +99,9 @@ export function attributeToCommand(
 }
 
 /**
- * Applies a non-init engine message to a live renderer. This is the worker's
- * entire `onmessage` switch, extracted as a pure function so it's
- * unit-testable against a fake renderer without a real Worker/OffscreenCanvas.
+ * Applies a non-init engine message to a live renderer — the worker's whole
+ * onmessage switch, extracted so it's unit-testable against a fake renderer
+ * without a real Worker/OffscreenCanvas.
  */
 export function applyMessage(renderer: GrappleberryRenderer, msg: Exclude<EngineMessage, { type: "init" }>): void {
   switch (msg.type) {

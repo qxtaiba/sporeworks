@@ -1,21 +1,13 @@
-// Builds the off-thread engine worker and the element/renderer lib bundle,
-// then splices the worker source into the element bundle as a global
-// constant so the shipped file stays a single self-contained script.
+// Builds the worker and element/renderer bundles, then prepends the worker
+// source as `globalThis.__WORKER_SOURCE__=...;` so the shipped file stays a
+// single self-contained script. Not `vite ?worker&inline` — that's a
+// documented "works in dev, breaks in build" trap in library mode
+// (vitejs/vite#13726, #14306). The element references the bare
+// `__WORKER_SOURCE__` identifier (declare const is erased), which resolves
+// via scope-chain fallthrough to the prepended global — robust regardless
+// of what the minifier does inside the bundle.
 //
-// Not wired into `vite ?worker&inline` — that's a documented "works in dev,
-// breaks in build" trap in library mode (vitejs/vite#13726, #14306).
-// Instead the worker is its own vite lib build (vite.worker.config.ts) and
-// this script prepends its output as `globalThis.__WORKER_SOURCE__=...;` to
-// the element bundle (vite.lib.config.ts's output). The element's
-// createEngineWorker() (grappleberry-element.ts) references the bare
-// `__WORKER_SOURCE__` identifier, which has no runtime declaration in the
-// compiled output (TypeScript erases `declare const`), so it resolves via
-// ordinary JS scope-chain fallthrough to `globalThis.__WORKER_SOURCE__`.
-// Prepending a global assignment is robust regardless of what the minifier
-// does inside the element bundle — no token search-and-replace needed.
-//
-// Output: dist/grappleberry.js by default; pass `--out <path>` to write the
-// spliced bundle somewhere else (e.g. a consuming site's public/ directory).
+// Output: dist/grappleberry.js; pass `--out <path>` to write elsewhere.
 import { execSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";

@@ -168,15 +168,13 @@ float sdTaperedBezier(vec3 p, vec3 a, vec3 b, vec3 c, float r0, float r1) {
   return smin(smin(d0, d1, max(0.006, rA * 0.35)), d2, max(0.005, rB * 0.35));
 }
 
-// PHASE-LOCK LAW (loop seam, 2026-07-13): every uPhase-driven sin/cos in
-// this shader must complete an INTEGER number of cycles over phase 0→1, so
-// phase 1.0 renders pixel-identical to phase 0.0 — that is what makes both
-// the live element's continuous phase wrap and the pre-rendered hero loop
-// seamless. Organic de-sync comes from the per-blob/tendril random phase
-// OFFSETS (and spatial terms), never from irrational frequency ratios.
-// (Hash-fed terms like the grain's uPhase*100.0 are exempt: they produce
-// frame-decorrelated noise, so the wrap step is statistically identical to
-// any other frame step.)
+// PHASE-LOCK LAW: every uPhase-driven sin/cos must complete an INTEGER
+// number of cycles over phase 0→1, so phase 1.0 renders pixel-identical to
+// phase 0.0 — that is what makes the live phase wrap and exported loops
+// seamless. Organic de-sync comes from per-blob/tendril random phase
+// OFFSETS (and spatial terms), never irrational frequency ratios. Hash-fed
+// terms (e.g. the grain's uPhase*100.0) are exempt: frame-decorrelated
+// noise makes the wrap step statistically identical to any other step.
 vec3 animatedPoint(vec3 point, float phase, float amount) {
   float wave = sin(uPhase * 6.2831853 + phase + point.y * 1.7);
   float wave2 = cos(uPhase * 6.2831853 + phase * 1.31 + point.x * 2.0);
@@ -193,10 +191,8 @@ float mapScene(vec3 worldP) {
   bool terra = uTerra > 0.5;
   if (!terra) p.y += 0.03;
 
-  // Very slow breathing that can be frozen by setting phase. Terra is a
-  // rigid planet, not a breathing organism, so it skips the pulse entirely.
-  // Amplitude 0.022 (owner, 2026-07-13: "make it breathe a little more" —
-  // raised from 0.012; still dignified, not a screensaver pulse).
+  // Very slow breathing, freezable by pinning phase. Terra is a rigid
+  // planet, so it skips the pulse entirely.
   float breath = terra ? 1.0 : 1.0 + sin(uPhase * 6.2831853) * 0.022;
   p /= breath;
 
@@ -210,11 +206,9 @@ float mapScene(vec3 worldP) {
     float phase = uBlobScales[i].w;
     vec3 center = blob.xyz * mix(0.55, 1.0, uGrowth);
     if (!terra) {
-      // Integer frequencies only (phase-lock law above): the old 0.81/0.67
-      // multipliers never completed a whole cycle over phase 0→1 and were
-      // THE loop seam. Axis de-sync now rides distinct scalings of the
-      // per-blob random offset (phase*1.7 / *2.6) plus a faster ×2 register
-      // on z; amounts raised slightly with the breath (0.009/8/6 → 11/10/7).
+      // Integer frequencies only (phase-lock law above). Axis de-sync rides
+      // distinct scalings of the per-blob random offset (phase*1.7 / *2.6)
+      // plus a faster ×2 register on z.
       center += vec3(
         sin(uPhase * 6.2831853 + phase) * 0.011,
         cos(uPhase * 6.2831853 + phase * 1.7) * 0.010,
@@ -240,10 +234,9 @@ float mapScene(vec3 worldP) {
     d = smin(d, tendril, max(0.018, r0 * 0.55));
   }
 
-  // Texture drift orbits a small circle instead of drifting linearly
-  // (uPhase*0.22 never returned to its start — the other half of the loop
-  // seam). Radius 0.035 ≈ 0.22/2π keeps the exact old drift SPEED, and a
-  // circle has constant velocity, so nothing reads as a reversal.
+  // Texture drift orbits a small circle instead of drifting linearly, so it
+  // returns to its start at phase 1 (phase-lock law); a circle has constant
+  // velocity, so nothing reads as a reversal.
   float texture = fbm(p * 3.2 + vec3(
     uSeed * 0.017 + sin(uPhase * 6.2831853) * 0.035,
     uSeed * 0.011 + cos(uPhase * 6.2831853) * 0.035,
@@ -348,9 +341,8 @@ vec3 lightDirFromLon(float lonDeg, float elevationDeg) {
 
 // Land/ocean ink-probability multiplier sampled from the equirectangular
 // landmask at the hit point's object-space lat/lon (latTop 85 → latBottom
-// -65, matching the site's own landmask convention). Ocean stays a sparse
-// deep field, land reads bright, and the mask's own gradient (neighbor
-// taps) gives coastlines a small extra boost so shorelines stay legible
+// -65). Ocean stays a sparse deep field, land reads bright, and the mask's
+// own gradient (neighbor taps) boosts coastlines so shorelines stay legible
 // once the screening breaks the shading apart.
 float terraMaskFactor(vec3 dirN) {
   if (uHasMask < 0.5) return 1.0;

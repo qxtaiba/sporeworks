@@ -71,11 +71,3 @@ export function add3(a: Vec3, b: Vec3): Vec3 {
 export function scale3(v: Vec3, scalar: number): Vec3 {
   return [v[0] * scalar, v[1] * scalar, v[2] * scalar];
 }
-
-export function randomDirection(rng: RNG, yBias = 0): Vec3 {
-  return normalize3([
-    rng.normal(0, 1),
-    rng.normal(yBias, 1),
-    rng.normal(0, 0.75),
-  ]);
-}

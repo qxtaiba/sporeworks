@@ -1,17 +1,11 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { capabilityProbe, resetCapabilityProbeForTests } from "./capability";
 
-// vitest.config.ts runs this file under the `node` environment (see that
-// file's own comment), which has none of OffscreenCanvas/Worker/
-// HTMLCanvasElement by default — so every test below builds up exactly the
-// global shape it needs and afterEach restores whatever was there before
-// this file ran (nothing, in practice), keeping tests order-independent.
-//
-// `globalThis` is viewed as a plain string-keyed record rather than
-// `typeof globalThis`: the real lib.dom.d.ts ambient types for
-// OffscreenCanvas/Worker/HTMLCanvasElement are exact browser interfaces, and
-// forcing our minimal fakes (and `undefined`, standing in for "absent") to
-// satisfy them would defeat the point of the test.
+// Runs in the node environment (no OffscreenCanvas/Worker/HTMLCanvasElement
+// by default): each test builds exactly the global shape it needs and
+// afterEach restores it, keeping tests order-independent. globalThis is
+// viewed as a plain record because the real lib.dom.d.ts interfaces would
+// reject the minimal fakes the tests install.
 const g = globalThis as unknown as Record<"OffscreenCanvas" | "Worker" | "HTMLCanvasElement", unknown>;
 
 const originals: Record<"OffscreenCanvas" | "Worker" | "HTMLCanvasElement", unknown> = {
@@ -24,17 +18,14 @@ afterEach(() => {
   g.OffscreenCanvas = originals.OffscreenCanvas;
   g.Worker = originals.Worker;
   g.HTMLCanvasElement = originals.HTMLCanvasElement;
-  // The probe memoizes (one page = one answer); each test builds a fresh
-  // environment, so drop the memo between them.
+  // The probe memoizes (one page = one answer); drop it between tests.
   resetCapabilityProbeForTests();
 });
 
-// Installs a fully-supported environment (OffscreenCanvas, Worker,
-// transferControlToOffscreen on HTMLCanvasElement.prototype) with a
-// caller-controlled getContext, so each test only has to knock out or
-// reshape the one piece it's asserting on. "Missing" is modeled as
-// `undefined` rather than deleting the property — identical for
-// `typeof x === 'undefined'`, which is all capabilityProbe checks.
+// Installs a fully-supported environment with a caller-controlled
+// getContext, so each test only knocks out the one piece it asserts on.
+// "Missing" is modeled as `undefined`, which is identical for the
+// `typeof x === 'undefined'` checks capabilityProbe makes.
 const installSupportedGlobals = (getContext: (...args: unknown[]) => unknown) => {
   g.HTMLCanvasElement = { prototype: { transferControlToOffscreen: () => {} } };
   g.Worker = class {};

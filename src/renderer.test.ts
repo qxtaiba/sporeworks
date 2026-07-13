@@ -1,11 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { backingSize } from "./renderer";
 
-// backingSize is the pure sizing helper resize() delegates to. Testing it
-// directly (rather than constructing a full renderer over a fake WebGL
-// context) is the route the E1 task brief prefers — it exercises the exact
-// worker-safety behavior (explicit dpr, no window/clientWidth reads) without
-// needing a WebGL fake at all.
+// backingSize is the pure sizing helper resize() delegates to; testing it
+// directly exercises the worker-safety contract (explicit dpr, no
+// window/clientWidth reads) without needing a WebGL fake.
 describe("backingSize", () => {
   it("scales CSS dimensions by the passed dpr when under the cap", () => {
     expect(backingSize(400, 300, 1)).toEqual({ w: 400, h: 300 });

@@ -48,9 +48,7 @@ export const PRESETS: Record<PresetName, Preset> = {
     camera: 7.55,
     rotation: [0.0, 0.0, 0.0],
     specialStem: true,
-    // 10s (owner, 2026-07-13: "a little longer" — the identity law's 7-10s
-    // ceiling). The pre-rendered hero loop must cover exactly one cycle at
-    // this length (scripts/render-berry.mjs HAZE_CYCLE_SECONDS mirrors it).
+    // Pre-rendered loops must cover exactly one cycle at this length.
     cycleSeconds: 10,
   },
   microbe: {

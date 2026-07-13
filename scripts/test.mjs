@@ -34,20 +34,12 @@ if (terraFile.size < 10_000) throw new Error(`Terra render is unexpectedly small
 await unlink(terraOutput);
 console.log("Terra shader compiled and masked capture completed.");
 
-// Worker smoke check: the two renders above exercise sporeworks' own
-// dev/main.ts direct-render path (a live main-thread canvas +
-// captureDataUrl()) — never the SHIPPED, built
-// dist/grappleberry.js, which transfers its canvas to a worker and
-// paints there instead. That build step (splicing __WORKER_SOURCE__ as a
-// bare identifier the element resolves off `globalThis`) has no other
-// end-to-end check, so a build-only breakage (e.g. the splice not landing,
-// or the worker throwing before its first frame) would ship silently. This
-// loads the real built bundle in a fresh headless page, mounts a
-// <grappleberry-organism>, confirms a dedicated worker actually spins up,
-// and asserts the canvas it painted is non-blank via a compositor-level
-// screenshot (a transferred canvas can't be read back with
-// getContext()/toDataURL() from the main thread, so pixel content must be
-// sampled the way a real user's compositor would show it).
+// Worker smoke check: the renders above exercise the main-thread path, not
+// the shipped dist/grappleberry.js, whose __WORKER_SOURCE__ splice has no
+// other end-to-end check — a build-only breakage would ship silently. Load
+// the real bundle, mount the element, confirm a dedicated worker spins up,
+// and assert the canvas is non-blank via a compositor-level screenshot (a
+// transferred canvas can't be read back from the main thread).
 const builtBundle = resolve(root, "dist", "grappleberry.js");
 const smokeDir = await mkdtemp(join(tmpdir(), "grappleberry-worker-smoke-"));
 try {

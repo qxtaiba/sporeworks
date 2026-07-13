@@ -3,11 +3,10 @@ import { PRESETS, type PresetName } from "./presets";
 import { capabilityProbe } from "./capability";
 import { attributeToCommand, type EngineMessage } from "./engine-messages";
 
-// Injected by scripts/build-engine.mjs at build time: the splice step
-// replaces this with the JSON-stringified built worker source, so the
-// shipped grappleberry.js stays a single self-contained script. In raw TS
-// (dev, typecheck, vitest) it's undefined, so createEngineWorker() falls
-// through to the dev/module-worker path below.
+// Spliced in by scripts/build-engine.mjs as the built worker source, so the
+// shipped grappleberry.js stays one self-contained script. Undefined in raw
+// TS (dev/typecheck/vitest); createEngineWorker() then falls through to the
+// dev module-worker path.
 declare const __WORKER_SOURCE__: string | undefined;
 
 const observedNumericAttributes: Array<keyof GrappleberryOptions> = [
@@ -34,13 +33,9 @@ const numericAttributeName = (key: keyof GrappleberryOptions): string =>
   : key === "lightLon" ? "light-lon"
   : key;
 
-/** Spins up the off-thread engine worker. In production `__WORKER_SOURCE__`
- * is spliced in by scripts/build-engine.mjs as a string constant, so the
- * worker runs from a same-origin Blob URL and grappleberry.js stays a
- * single self-contained script (no separate worker asset to serve). In
- * dev/typecheck (no splice), it falls back to a module worker resolved
- * from this file's own source path — sporeworks' own vite dev server
- * handles that resolution; production never takes this branch. */
+/** In production the worker runs from a same-origin Blob URL built from the
+ * spliced source; in dev it falls back to a module worker the vite dev
+ * server resolves. Production never takes the fallback branch. */
 function createEngineWorker(): Worker {
   const src = typeof __WORKER_SOURCE__ === "string" ? __WORKER_SOURCE__ : "";
   if (src.length) {
@@ -99,12 +94,10 @@ export class GrappleberryElement extends HTMLElement {
     if (!this.canvas) throw new Error("Unable to create Grappleberry canvas.");
 
     // Real capability probe (not API-presence-only — see capability.ts).
-    // On failure the element stays inert: no getContext(), no transfer, no
-    // worker. Any fallback the host page rendered (e.g. a static PNG
-    // behind the element) keeps showing. Critical
-    // ordering: nothing above this line may call getContext() on
-    // this.canvas — that would throw InvalidStateError on the transfer
-    // below.
+    // On failure the element stays inert: no transfer, no worker, so any
+    // fallback the host page rendered keeps showing. Ordering: nothing
+    // above this line may call getContext() on this.canvas — that would
+    // throw InvalidStateError on the transfer below.
     if (!capabilityProbe()) return;
 
     const preset = this.readPreset();
@@ -117,11 +110,7 @@ export class GrappleberryElement extends HTMLElement {
     });
     this.applyNumericAttributes(options);
 
-    // `maskData` may have been set as a plain instance property before this
-    // element was upgraded (or before it was connected). There's no
-    // worker-side consumer for it (the one-way protocol has no `mask`
-    // message yet), but keep replaying the upgrade so the property
-    // accessor itself stays correct.
+    // Replay a pre-upgrade `maskData` assignment through the accessor.
     this.upgradeProperty("maskData");
 
     const offscreen = this.canvas.transferControlToOffscreen();
@@ -174,37 +163,30 @@ export class GrappleberryElement extends HTMLElement {
     this.worker.postMessage({ type: "attr", command } satisfies EngineMessage);
   }
 
-  /** No worker-side renderer to reach in worker mode — the one-way
-   * protocol has no `phase` message, so this is a documented no-op rather
-   * than wiring a message for dead traffic. */
-  setPhase(_phase: number): void {
-    // no-op: no phase message in the one-way protocol
-  }
+  /** Documented no-op: the one-way protocol has no `phase` message. */
+  setPhase(_phase: number): void {}
 
-  /** No main-thread renderer/canvas to read back in worker mode (the
-   * canvas was transferred). No production caller reaches this in `src/`. */
+  /** Always null: the canvas was transferred, nothing to read back here. */
   captureDataUrl(): string | null {
     return null;
   }
 
-  /** No worker-side renderer instance is reachable from the main thread
-   * (one-way protocol, no worker→main messages). */
+  /** Always null: no worker→main messages, so the renderer is unreachable. */
   getRenderer(): null {
     return null;
   }
 
   /** Terra's landmask: `{ cols, rows, bits }`, row-major '1'=land strings,
-   * equirectangular (latTop 85 → latBottom -65). Set as a property, not an
-   * attribute — it's structured data, not a scalar. Safe to set before or
-   * after the element upgrades/connects. Worker mode has no `mask` message
-   * yet: the setter stores the value for the getter but otherwise no-ops. */
+   * equirectangular (latTop 85 → latBottom -65). A property, not an
+   * attribute — structured data, not a scalar. Safe to set before or after
+   * upgrade/connect. The protocol has no `mask` message yet, so the setter
+   * stores the value for the getter but otherwise no-ops. */
   get maskData(): TerraMaskData | null {
     return this.pendingMaskData;
   }
 
   set maskData(value: TerraMaskData | null) {
     this.pendingMaskData = value;
-    // no-op beyond storage: no worker-side renderer reachable from here
   }
 
   private postResize(): void {

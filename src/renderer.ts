@@ -139,12 +139,10 @@ function createProgram(gl: WebGLRenderingContext): WebGLProgram {
   return program;
 }
 
-/** Pure CSS-px → backing-store-px sizing helper, capped so a high device
- * pixel ratio doesn't blow up the framebuffer (halftone screening hides the
- * softer upscale — see resize()). Takes dpr as a plain argument rather than
- * reading `window.devicePixelRatio` so it (and resize(), which delegates to
- * it) works identically on the main thread and inside a worker, where
- * `window` doesn't exist. Exported for unit testing. */
+/** CSS-px → backing-store-px, dpr-capped so a high ratio doesn't blow up
+ * the framebuffer (the screening hides the softer upscale). Takes dpr as an
+ * argument — never reads `window.devicePixelRatio` — so it works identically
+ * inside a worker, where `window` doesn't exist. Exported for tests. */
 export function backingSize(
   cssWidth: number,
   cssHeight: number,
@@ -191,36 +189,25 @@ export class GrappleberryRenderer {
   private targetFps = 60;
   private lastRenderTime = 0;
   private resolutionScale = 1;
-  // Last-known CSS size + dpr, seeded to a sensible pre-layout default (a
-  // canvas element's own default backing size, 1x). resize() calls without
-  // explicit args (constructor, setResolutionScale) reuse these instead of
-  // reading window.devicePixelRatio/canvas.clientWidth, neither of which
-  // exist on an OffscreenCanvas running in a worker.
+  // Last-known CSS size + dpr, seeded to a canvas element's default backing
+  // size at 1x; reused by arg-less resize() calls (see resize()).
   private lastCssW = 300;
   private lastCssH = 300;
   private lastDpr = 1;
 
   constructor(canvas: HTMLCanvasElement | OffscreenCanvas, options: GrappleberryOptions) {
     this.canvas = canvas;
-    // Both HTMLCanvasElement.getContext("webgl", ...) and
-    // OffscreenCanvas.getContext("webgl", ...) return WebGLRenderingContext
-    // | null, but TS can't resolve overloads across a union receiver type,
-    // so it falls back to the generic RenderingContext union — cast back to
-    // what both constituents actually return.
+    // TS can't resolve getContext overloads across the HTMLCanvasElement |
+    // OffscreenCanvas union receiver — cast back to what both return.
     const gl = canvas.getContext("webgl", {
       alpha: true,
       antialias: false,
       depth: false,
       stencil: false,
       premultipliedAlpha: false,
-      // false: with preservation on, the compositor must COPY the drawing
-      // buffer every frame instead of flipping it — a per-frame cost on the
-      // production path that buys nothing there (worker mode has no capture
-      // API at all). The two readback paths (capturePng/captureDataUrl)
-      // stay correct without it: both call render() and then read back in
-      // the same task, and the drawing buffer is only cleared after
-      // compositing, i.e. between tasks — same-task readback always sees
-      // the frame just drawn.
+      // Preservation would force a per-frame drawing-buffer copy for
+      // nothing: capturePng/captureDataUrl render and read back in the same
+      // task, and the buffer is only cleared between tasks.
       preserveDrawingBuffer: false,
       powerPreference: "high-performance",
     }) as WebGLRenderingContext | null;
@@ -324,14 +311,11 @@ export class GrappleberryRenderer {
     this.dirty = true;
   }
 
-  /** Resizes the backing store to `width×height` CSS px at `dpr`, capped at
-   * 1.5x (see backingSize) and further scaled by resolutionScale. All three
-   * args are optional only so the constructor and setResolutionScale can
-   * re-resize with the last externally-supplied dims; every real caller
-   * (ResizeObserver-driven, worker `resize` message) always passes all
-   * three explicitly — this never reads `window.devicePixelRatio` or
-   * `canvas.clientWidth`, so it works identically on an OffscreenCanvas in
-   * a worker, where neither exists. */
+  /** Resizes the backing store (dpr-capped via backingSize, scaled by
+   * resolutionScale). Args are optional only so the constructor and
+   * setResolutionScale can reuse the last externally-supplied dims — this
+   * never reads window.devicePixelRatio or canvas.clientWidth, so it works
+   * on an OffscreenCanvas in a worker, where neither exists. */
   resize(width?: number, height?: number, dpr?: number): void {
     const cssWidth = width ?? this.lastCssW;
     const cssHeight = height ?? this.lastCssH;
@@ -512,13 +496,9 @@ export class GrappleberryRenderer {
     gl.uniform1i(this.uniform("uMask"), 0);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
-    // No gl.finish() here deliberately — this runs up to 60x/sec from the
-    // rAF loop (and up to 30x/sec more from external setPhase() drivers
-    // like GlobeScene's terra sync) and gl.finish() is a hard CPU-blocking
-    // GPU sync. It bought this path nothing: WebGL's command queue already
-    // preserves draw order, and the only two callers that actually need a
-    // completed frame (capturePng/captureDataUrl, below) force their own
-    // sync via toBlob/toDataURL's implicit readback.
+    // No gl.finish() here — it's a hard CPU-blocking GPU sync on a path
+    // that runs up to 60x/sec. The only callers that need a completed frame
+    // (capturePng/captureDataUrl) force their own sync.
     this.dirty = false;
   }
 
@@ -535,13 +515,8 @@ export class GrappleberryRenderer {
     }
     const frameInterval = 1000 / this.targetFps;
     // The 0.01ms epsilon absorbs floating-point cancellation on exact-ratio
-    // targets (fps=30 or fps=60 against a 60Hz display: frameInterval and
-    // the accumulated tick spacing are mathematically equal but round to
-    // independently-imprecise doubles at large timestamp magnitudes).
-    // Without it, `timestamp - lastRenderTime >= frameInterval` can miss
-    // its boundary by a few ULPs and silently fall back to the next native
-    // tick — verified live: fps="24" and fps="30" rendered at an
-    // indistinguishable ~20fps on a 60Hz host before this fix.
+    // targets (fps 30/60 on a 60Hz display): without it the comparison can
+    // miss its boundary by a few ULPs and skip to the next native tick.
     if (this.dirty && timestamp - this.lastRenderTime >= frameInterval - 0.01) {
       this.render();
       this.lastRenderTime = timestamp;
@@ -554,14 +529,10 @@ export class GrappleberryRenderer {
   }
 
   capturePng(filename = `grappleberry-${this.options.preset}-${this.options.seed}.png`): void {
-    // document/toBlob-with-anchor-download don't exist off the main
-    // thread — this is a dev-tool-only path (generator scripts construct
-    // the renderer directly over a real canvas), never called from a
-    // worker-hosted renderer, so a clear throw beats a silent ReferenceError.
-    // `typeof OffscreenCanvas !== "undefined"` guards the ReferenceError in
-    // environments without it; the compound `&&` means TS can't narrow the
-    // union on the fallthrough branch from that alone, so cast explicitly —
-    // reaching here proves (at runtime) this.canvas is an HTMLCanvasElement.
+    // Main-thread-only path (document + anchor download don't exist in a
+    // worker); a clear throw beats a silent ReferenceError. The typeof
+    // guard covers environments without OffscreenCanvas, and defeats TS
+    // narrowing on the fallthrough — hence the explicit cast below.
     if (typeof OffscreenCanvas !== "undefined" && this.canvas instanceof OffscreenCanvas) {
       throw new Error("capturePng is not available off the main thread");
     }
@@ -582,17 +553,13 @@ export class GrappleberryRenderer {
   }
 
   captureDataUrl(): string | null {
-    // OffscreenCanvas has no toDataURL. No production caller reaches this
-    // in worker mode (the custom element's captureDataUrl() already
-    // returns null there); this guard is for correctness, not a feature.
+    // OffscreenCanvas has no toDataURL; worker-mode callers get null.
     if (typeof OffscreenCanvas !== "undefined" && this.canvas instanceof OffscreenCanvas) {
       return null;
     }
     const canvas = this.canvas as HTMLCanvasElement;
     this.render();
-    // Same reasoning as capturePng: toDataURL reads pixels back
-    // synchronously, but gl.finish() guarantees the draw is complete before
-    // that read rather than relying on it as an implicit side effect.
+    // As in capturePng: guarantee the draw landed before the readback.
     this.gl.finish();
     return canvas.toDataURL("image/png");
   }
