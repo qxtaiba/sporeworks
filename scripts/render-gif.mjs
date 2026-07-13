@@ -20,6 +20,15 @@ const projectRoot = resolve(new URL("..", import.meta.url).pathname);
 const output = resolve(process.cwd(), args.out ?? `grappleberry-${args.preset ?? "haze"}.gif`);
 const frames = Math.max(2, Number(args.frames ?? 48));
 const fps = Math.max(1, Number(args.fps ?? 16));
+// --scale <px>: capture at --size, lanczos-downscale to this width before
+// quantization — supersampling keeps the halftone dots crisp per pixel.
+const scale = args.scale ? Math.max(16, Number(args.scale)) : null;
+const maxColors = Math.min(256, Math.max(4, Number(args.colors ?? 256)));
+// --dither none|bayer (default bayer, --bayer-scale 5). For near-monochrome
+// halftone fields, none/coarse bayer beats floyd_steinberg smear.
+const dither = String(args.dither ?? "bayer");
+const bayerScale = Math.max(0, Number(args["bayer-scale"] ?? 5));
+const keepFrames = args["keep-frames"] === true || args["keep-frames"] === "true";
 const frameDirectory = resolve(projectRoot, ".frames");
 await rm(frameDirectory, { recursive: true, force: true });
 await mkdir(frameDirectory, { recursive: true });
@@ -45,7 +54,10 @@ try {
 }
 
 const palette = resolve(frameDirectory, "palette.png");
-await run("ffmpeg", ["-y", "-framerate", String(fps), "-i", resolve(frameDirectory, "frame-%04d.png"), "-vf", "palettegen=max_colors=128:stats_mode=diff", palette]);
-await run("ffmpeg", ["-y", "-framerate", String(fps), "-i", resolve(frameDirectory, "frame-%04d.png"), "-i", palette, "-lavfi", "paletteuse=dither=bayer:bayer_scale=3", "-loop", "0", output]);
-await rm(frameDirectory, { recursive: true, force: true });
+const frameInput = resolve(frameDirectory, "frame-%04d.png");
+const scaleChain = scale ? `scale=${scale}:-2:flags=lanczos` : "null";
+const paletteUse = dither === "none" ? "paletteuse=dither=none" : `paletteuse=dither=bayer:bayer_scale=${bayerScale}`;
+await run("ffmpeg", ["-y", "-framerate", String(fps), "-i", frameInput, "-vf", `${scaleChain},palettegen=max_colors=${maxColors}:stats_mode=diff`, palette]);
+await run("ffmpeg", ["-y", "-framerate", String(fps), "-i", frameInput, "-i", palette, "-lavfi", `[0:v]${scaleChain}[base];[base][1:v]${paletteUse}`, "-loop", "0", output]);
+if (!keepFrames) await rm(frameDirectory, { recursive: true, force: true });
 console.log(output);
